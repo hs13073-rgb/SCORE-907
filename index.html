@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>東興國中 907 班成績查詢</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#16233B; --muted:#5B6780; --paper:#F3F6FA; --panel:#FFFFFF; --line:#D6DEE8;
+  --blue:#2B5C94; --blue-soft:#DCE8F5; --good:#1F7A60; --warn:#B3432C;
+  --font:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.65}
+.wrap{max-width:720px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:22px;line-height:1.3;margin:8px 0 4px;font-weight:700}
+h2{font-size:17px;margin:28px 0 10px;font-weight:700}
+.sub{color:var(--muted);margin:0 0 20px;font-size:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
+label{display:block;font-weight:500;margin:12px 0 4px;font-size:15px}
+input{width:100%;font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink)}
+input:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.btn{font:inherit;font-weight:700;background:var(--ink);color:#fff;border:0;border-radius:6px;padding:11px 18px;cursor:pointer;margin-top:16px;min-height:44px}
+.btn:disabled{opacity:.55;cursor:wait}
+.err{color:var(--warn);margin:12px 0 0;font-size:15px}
+.hint{color:var(--muted);font-size:13px;margin:6px 0 0}
+.who{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:4px 0 14px}
+.who b{font-size:18px}
+.linkbtn{font:inherit;background:none;border:0;color:var(--blue);text-decoration:underline;cursor:pointer;padding:6px 0;min-height:44px}
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px}
+.tab{font:inherit;font-size:15px;white-space:nowrap;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 14px;cursor:pointer;color:var(--ink);min-height:44px}
+.tab[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:700}
+.rank{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.rank .big{font-size:56px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+.rank .cap{color:var(--muted);font-size:14px;padding-bottom:6px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-top:16px}
+.stat{border-top:2px solid var(--line);padding-top:6px}
+.stat .k{font-size:13px;color:var(--muted)}
+.stat .v{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{text-align:right;padding:9px 6px;border-bottom:1px solid var(--line);font-size:15px}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:500;color:var(--muted);font-size:13px}
+.up{color:var(--good)} .down{color:var(--warn)}
+.radar{display:block;width:100%;max-width:360px;margin:4px auto 0}
+.legend{display:flex;gap:16px;justify-content:center;font-size:13px;color:var(--muted);margin-top:4px}
+.legend i{display:inline-block;width:14px;height:0;border-top:3px solid var(--blue);vertical-align:middle;margin-right:6px}
+.legend i.dash{border-top:2px dashed var(--muted)}
+.dist{display:grid;grid-template-columns:52px repeat(6,1fr);gap:6px;align-items:end;margin-bottom:8px}
+.dist .nm{font-size:14px}
+.dist .c{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:46px;font-size:12px;color:var(--muted)}
+.dist .bar{width:100%;background:var(--line);border-radius:2px 2px 0 0;min-height:2px}
+.dist .c.me .bar{background:var(--blue)}
+.dist .c.me{color:var(--blue);font-weight:700}
+.dist .hd{font-size:12px;color:var(--muted);text-align:center}
+.note{color:var(--muted);font-size:13px;margin-top:10px}
+.empty{padding:28px 8px;color:var(--muted)}
+.hist{display:flex;align-items:flex-end;gap:4px;height:96px;margin-top:8px}
+.hist .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;font-size:11px;color:var(--muted);height:100%}
+.hist .col .bar{width:100%;background:var(--line);border-radius:2px 2px 0 0;min-height:2px}
+.hist .col.me .bar{background:var(--blue)}
+.hist .col.me{color:var(--blue);font-weight:700}
+.medal{vertical-align:-4px}
+.champ{display:inline-flex;align-items:center;gap:6px;background:#FFF4D1;border:1px solid #E2B33C;color:#7A5A08;border-radius:999px;padding:4px 14px 4px 8px;font-weight:700;font-size:15px;margin-bottom:6px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>東興國中 907 班成績查詢</h1>
+  <p class="sub">請輸入座號、學生姓名與導師提供的驗證碼。</p>
+
+  <form id="loginForm" class="panel" autocomplete="off" novalidate>
+    <label for="seat">座號</label>
+    <input id="seat" inputmode="numeric" maxlength="2" required>
+    <label for="name">學生姓名</label>
+    <input id="name" required>
+    <label for="code">驗證碼</label>
+    <input id="code" type="password" required>
+    <button class="btn" id="submitBtn" type="submit">查詢成績</button>
+    <p class="err" id="err" role="alert" hidden></p>
+    <p class="hint">連續輸入錯誤多次會暫時鎖定,請稍後再試。</p>
+  </form>
+
+  <div id="result" hidden></div>
+</div>
+
+<script>
+// 只有放在 GitHub Pages 時才會用到:貼上 Apps Script「網頁應用程式網址」(以 /exec 結尾)。在 Apps Script 內開啟時會忽略。
+var API_URL = 'https://script.google.com/macros/s/請換成你的部署ID/exec';
+
+var state = { data: null, exam: 0 };
+var BUCKETS = ['60以下', '60–69', '70–79', '80–89', '90–99', '100'];
+
+function $(id) { return document.getElementById(id); }
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function fmt(v, d) { return v == null ? '—' : (d == null ? String(v) : Number(v).toFixed(d)); }
+function rankText(v) { return v == null ? '—' : '第 ' + v + ' 名'; }
+
+$('loginForm').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var seat = $('seat').value, name = $('name').value, code = $('code').value;
+  var err = $('err'), btn = $('submitBtn');
+  if (!seat.trim() || !name.trim() || !code.trim()) {
+    err.textContent = '請填寫座號、姓名與驗證碼。'; err.hidden = false; return;
+  }
+  err.hidden = true; btn.disabled = true; btn.textContent = '查詢中…';
+  var done = function () { btn.disabled = false; btn.textContent = '查詢成績'; };
+  var fail = function (msg) { done(); err.textContent = msg; err.hidden = false; };
+  var show = function (res) {
+    done();
+    if (!res.ok) { err.textContent = res.message; err.hidden = false; return; }
+    $('code').value = '';
+    state.data = res; state.exam = latestOk(res.exams, null);
+    $('loginForm').hidden = true;
+    document.querySelector('.sub').hidden = true;
+    render();
+  };
+
+  // 在 Apps Script 頁面內執行:用 google.script.run
+  if (window.google && google.script && google.script.run) {
+    google.script.run.withSuccessHandler(show)
+      .withFailureHandler(function () { fail('連線失敗,請重新整理頁面後再試。'); })
+      .queryScores(seat, name, code);
+    return;
+  }
+
+  // 在 GitHub Pages 等外部網站執行:用 fetch 呼叫 Apps Script API
+  if (API_URL.indexOf('script.google.com') < 0 || API_URL.indexOf('請換成') >= 0) { fail('系統尚未設定完成,請聯絡導師。'); return; }
+  var ctrl = new AbortController();
+  var timer = setTimeout(function () { ctrl.abort(); }, 30000);
+  fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },  // 不觸發 CORS 預檢
+    body: JSON.stringify({ action: 'query', seat: seat, name: name, code: code }),
+    signal: ctrl.signal
+  })
+    .then(function (r) { return r.json(); })
+    .then(function (res) { clearTimeout(timer); show(res); })
+    .catch(function () {
+      clearTimeout(timer);
+      fail('連線失敗或逾時,請檢查網路後再試一次。');
+    });
+});
+
+/* 回傳指定類別(null 代表全部)中最後一場已有成績的考試索引;沒有就回傳該類別第一場 */
+function latestOk(exams, type) {
+  var last = -1, first = -1;
+  exams.forEach(function (ex, i) {
+    if (type && ex.type !== type) return;
+    if (first < 0) first = i;
+    if (ex.status === 'ok') last = i;
+  });
+  return last >= 0 ? last : Math.max(first, 0);
+}
+
+function logout() {
+  state.data = null;
+  $('result').hidden = true; $('result').innerHTML = '';
+  $('loginForm').hidden = false;
+  document.querySelector('.sub').hidden = false;
+  $('seat').focus();
+}
+
+function render() {
+  var d = state.data, root = $('result');
+  var cur = d.exams[state.exam];
+  var groups = [['regular', '定期評量'], ['mock', '模擬考']];
+  var gtabs = groups.map(function (g) {
+    return '<button class="tab" data-g="' + g[0] + '" aria-selected="' + (cur.type === g[0]) + '">' + g[1] + '</button>';
+  }).join('');
+  var etabs = d.exams.map(function (ex, i) {
+    return ex.type !== cur.type ? '' :
+      '<button class="tab" role="tab" aria-selected="' + (i === state.exam) + '" data-i="' + i + '">' + esc(ex.label) + '</button>';
+  }).join('');
+  root.innerHTML =
+    '<div class="who"><span><b>' + esc(d.student.name) + '</b>(' + esc(d.student.seat) + ' 號)</span>' +
+    '<button class="linkbtn" id="logoutBtn">登出</button></div>' +
+    '<div class="tabs" role="group" aria-label="考試類別">' + gtabs + '</div>' +
+    '<div class="tabs" role="tablist" aria-label="考試次數">' + etabs + '</div>' +
+    '<div id="examBody"></div>';
+  root.hidden = false;
+  $('logoutBtn').onclick = logout;
+  Array.prototype.forEach.call(root.querySelectorAll('.tab[data-i]'), function (b) {
+    b.onclick = function () { state.exam = +b.dataset.i; render(); };
+  });
+  Array.prototype.forEach.call(root.querySelectorAll('.tab[data-g]'), function (b) {
+    b.onclick = function () { state.exam = latestOk(d.exams, b.dataset.g); render(); };
+  });
+  var ex = d.exams[state.exam], body = $('examBody');
+  if (ex.status === 'pending') body.innerHTML = '<div class="panel empty">這次考試的成績尚未公布。</div>';
+  else if (ex.status === 'ok') body.innerHTML = ex.type === 'mock' ? mockHtml(ex) : regularHtml(ex);
+  else body.innerHTML = '<div class="panel empty">這份成績暫時無法顯示,請聯絡導師。</div>';
+}
+
+/* ---------- 共用元件 ---------- */
+
+function medal(size) {
+  return '<svg class="medal" width="' + size + '" height="' + Math.round(size * 1.25) + '" viewBox="0 0 32 40" role="img" aria-label="冠軍金獎">' +
+    '<path d="M7 0h7l5 15h-7z" fill="#2B5C94"/><path d="M25 0h-7l-5 15h7z" fill="#B3432C"/>' +
+    '<circle cx="16" cy="26" r="12" fill="#E2B33C" stroke="#B88A12" stroke-width="2"/>' +
+    '<circle cx="16" cy="26" r="8.2" fill="none" stroke="#F7DE8A" stroke-width="1.5"/>' +
+    '<text x="16" y="31" text-anchor="middle" font-size="13" font-weight="700" fill="#7A5A08" font-family="sans-serif">1</text></svg>';
+}
+function champBadge() { return '<span class="champ">' + medal(20) + '冠軍金獎</span>'; }
+function stat(k, v, rank) {
+  return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + (rank === 1 ? medal(16) + ' ' : '') + esc(v) + '</div></div>';
+}
+function rankStat(k, rank) { return stat(k, rankText(rank), rank); }
+
+/* ---------- 定期評量 ---------- */
+
+function regularHtml(ex) {
+  var list = ex.subjects;
+  var h = '<div class="panel">' +
+    '<div class="rank"><span class="big">' + (ex.classRank == null ? '—' : ex.classRank) + '</span>' +
+    (ex.classRank === 1 ? champBadge() : '') +
+    '<span class="cap">班排名(全班 ' + ex.classSize + ' 人)</span></div>' +
+    '<div class="stats">' +
+    stat('總分', fmt(ex.total, 1)) + stat('平均', fmt(ex.avg, 1)) +
+    (ex.schoolRank != null ? rankStat('校排', ex.schoolRank) : '') +
+    (ex.writing != null ? stat('寫作', fmt(ex.writing)) : '') +
+    '</div></div>';
+
+  h += '<h2>各科表現</h2><div class="panel">' + radar(list, 100, 5) +
+    '<div class="legend"><span><i></i>本人</span><span><i class="dash"></i>班平均</span></div></div>';
+
+  h += '<div class="panel" style="margin-top:12px"><table><thead><tr><th>科目</th><th>本人</th><th>班平均</th><th>差距</th></tr></thead><tbody>' +
+    list.map(function (s) {
+      var diff = (s.score != null && s.classAvg != null) ? s.score - s.classAvg : null;
+      var cls = diff == null ? '' : (diff >= 0 ? 'up' : 'down');
+      var dtxt = diff == null ? '—' : (diff >= 0 ? '+' : '−') + Math.abs(diff).toFixed(1);
+      return '<tr><td>' + esc(s.name) + '</td><td>' + fmt(s.score, 1) + '</td><td>' + fmt(s.classAvg, 1) + '</td><td class="' + cls + '">' + dtxt + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+
+  h += '<h2>全班分數分布</h2><div class="panel">' +
+    '<div class="dist"><span></span>' + BUCKETS.map(function (b) { return '<span class="hd">' + b + '</span>'; }).join('') + '</div>' +
+    list.map(distRow).join('') +
+    '<p class="note">藍色為你所在的分數區間,數字為該區間的人數;「100」為滿分的人數。</p></div>';
+  return h;
+}
+
+function distRow(s) {
+  var max = Math.max.apply(null, s.dist.concat([1]));
+  return '<div class="dist"><span class="nm">' + esc(s.name) + '</span>' +
+    s.dist.map(function (n, i) {
+      var me = s.bucket === i;
+      return '<div class="c' + (me ? ' me' : '') + '"><span>' + n + '</span><div class="bar" style="height:' + Math.round(n / max * 30) + 'px"></div></div>';
+    }).join('') + '</div>';
+}
+
+/* 雷達圖:list 為 [{name, score, classAvg}],max 為滿分,rings 為同心圈數 */
+function radar(list, max, rings) {
+  var W = 340, H = 300, cx = 170, cy = 150, R = 100, n = list.length;
+  var pt = function (i, pct, r) {
+    var a = -Math.PI / 2 + 2 * Math.PI * i / n, rr = (r != null ? r : R * Math.max(0, Math.min(100, pct)) / 100);
+    return [cx + rr * Math.cos(a), cy + rr * Math.sin(a)];
+  };
+  var poly = function (vals) {
+    return vals.map(function (v, i) { return pt(i, (v || 0) / max * 100).join(','); }).join(' ');
+  };
+  var g = '';
+  for (var k = 1; k <= rings; k++) {
+    g += '<polygon points="' + list.map(function (_, i) { return pt(i, k / rings * 100).join(','); }).join(' ') + '" fill="none" stroke="#D6DEE8" stroke-width="1"/>';
+  }
+  list.forEach(function (s, i) {
+    var p = pt(i, 100), l = pt(i, 0, R + 20);
+    var cos = Math.cos(-Math.PI / 2 + 2 * Math.PI * i / n);
+    g += '<line x1="' + cx + '" y1="' + cy + '" x2="' + p[0] + '" y2="' + p[1] + '" stroke="#D6DEE8"/>' +
+      '<text x="' + l[0] + '" y="' + (l[1] + 4) + '" font-size="13" fill="#16233B" text-anchor="' + (Math.abs(cos) < 0.2 ? 'middle' : cos > 0 ? 'start' : 'end') + '">' + esc(s.name) + '</text>';
+  });
+  g += '<polygon points="' + poly(list.map(function (s) { return s.classAvg; })) + '" fill="none" stroke="#5B6780" stroke-width="2" stroke-dasharray="5 4"/>';
+  g += '<polygon points="' + poly(list.map(function (s) { return s.score; })) + '" fill="rgba(43,92,148,.22)" stroke="#2B5C94" stroke-width="2.5"/>';
+  return '<svg class="radar" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="各科成績與班平均的雷達圖">' + g + '</svg>';
+}
+
+/* ---------- 模擬考 ---------- */
+
+function mockHtml(ex) {
+  var h = '<div class="panel">' +
+    '<div class="rank"><span class="big">' + fmt(ex.total) + '</span>' +
+    (ex.classRank === 1 ? champBadge() : '') +
+    '<span class="cap">總積分' + (ex.combo ? '(' + esc(ex.combo) + ')' : '') + '</span></div>' +
+    '<div class="stats">' +
+    rankStat('班排', ex.classRank) + rankStat('校排', ex.schoolRank) + rankStat('區排', ex.areaRank) +
+    (ex.areaMaleRank != null ? rankStat('區男排', ex.areaMaleRank) : '') +
+    (ex.areaFemaleRank != null ? rankStat('區女排', ex.areaFemaleRank) : '') +
+    (ex.essay != null ? stat('作文級分', fmt(ex.essay)) : '') +
+    '</div></div>';
+
+  var rl = ex.subjects.map(function (s) { return { name: s.name, score: s.points, classAvg: s.classAvg }; });
+  h += '<h2>各科積分</h2><div class="panel">' + radar(rl, 6, 6) +
+    '<div class="legend"><span><i></i>本人</span><span><i class="dash"></i>班平均</span></div>' +
+    '<p class="note" style="text-align:center">每一圈代表 1 分,最外圈為 6 分。</p></div>';
+
+  h += '<div class="panel" style="margin-top:12px"><table><thead><tr><th>科目</th><th>答對題數</th><th>等級</th><th>積分</th><th>班平均</th></tr></thead><tbody>' +
+    ex.subjects.map(function (s) {
+      return '<tr><td>' + esc(s.name) + '</td><td>' + fmt(s.correct) + '</td><td>' + esc(s.level || '—') + '</td><td>' + fmt(s.points) + '</td><td>' + fmt(s.classAvg, 1) + '</td></tr>';
+    }).join('') + '</tbody></table>';
+
+  var m = ex.subjects[1].extra, e = ex.subjects[2].extra;
+  h += '<p class="note">數學:選擇題答對 ' + fmt(m.choice) + ' 題;非選擇題第 1 題 ' + fmt(m.q1) + '、第 2 題 ' + fmt(m.q2) +
+    '(級分 ' + fmt(m.nonChoiceGrade) + ');加權分數 ' + fmt(m.weighted) + '。</p>' +
+    '<p class="note">英語:閱讀答對 ' + fmt(e.reading) + ' 題(' + esc(e.readingLevel || '—') + ');聽力答對 ' + fmt(e.listening) +
+    ' 題(' + esc(e.listeningLevel || '—') + ');加權分數 ' + fmt(e.weighted) + '。</p></div>';
+
+  h += '<h2>全班總積分分布</h2><div class="panel">' + hist(ex) +
+    '<p class="note">全班 ' + ex.classSize + ' 人,平均 ' + fmt(ex.classAvg, 1) + ' 分;藍色為你所在的區間,「30滿分」為滿分的人數。</p></div>';
+  return h;
+}
+
+var HLOW = [0, 6, 10, 14, 18, 22, 26, 30];
+var HLAB = ['5以下', '6–9', '10–13', '14–17', '18–21', '22–25', '26–29', '30滿分'];
+function hbin(v) { var k = 0; for (var i = 0; i < HLOW.length; i++) if (v >= HLOW[i]) k = i; return k; }
+
+function hist(ex) {
+  var t = ex.classTotals; if (!t.length) return '';
+  var cnt = HLOW.map(function () { return 0; });
+  t.forEach(function (v) { cnt[hbin(v)]++; });
+  var max = Math.max.apply(null, cnt.concat([1])), mine = hbin(ex.total);
+  return '<div class="hist">' + cnt.map(function (n, i) {
+    return '<div class="col' + (i === mine ? ' me' : '') + '"><span>' + n + '</span><div class="bar" style="height:' + Math.round(n / max * 62) + 'px"></div><span>' + HLAB[i] + '</span></div>';
+  }).join('') + '</div>';
+}
+</script>
+</body>
+</html>
