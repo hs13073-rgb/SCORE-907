@@ -317,7 +317,10 @@ function mockHtml(ex) {
 
   h += '<div class="panel" style="margin-top:12px"><table><thead><tr><th>科目</th><th>答對題數</th><th>等級</th><th>積分</th><th>班平均</th></tr></thead><tbody>' +
     ex.subjects.map(function (s) {
-      return '<tr><td>' + esc(s.name) + '</td><td>' + fmt(s.correct) + '</td><td>' + esc(s.level || '—') + '</td><td>' + fmt(s.points) + '</td><td>' + fmt(s.classAvg, 1) + '</td></tr>';
+      // 英語的答對題數顯示為「閱讀+聽力」,例如 43+21
+      var correct = (s.name === '英語' && s.extra && (s.extra.reading != null || s.extra.listening != null))
+        ? fmt(s.extra.reading) + '+' + fmt(s.extra.listening) : fmt(s.correct);
+      return '<tr><td>' + esc(s.name) + '</td><td>' + correct + '</td><td>' + esc(s.level || '—') + '</td><td>' + fmt(s.points) + '</td><td>' + fmt(s.classAvg, 1) + '</td></tr>';
     }).join('') + '</tbody></table>';
 
   var m = ex.subjects[1].extra, e = ex.subjects[2].extra;
