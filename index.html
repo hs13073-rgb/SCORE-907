@@ -41,7 +41,7 @@ input:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-o
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-top:16px}
 .stat{border-top:2px solid var(--line);padding-top:6px}
 .stat .k{font-size:13px;color:var(--muted)}
-.stat .v{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .v{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 th,td{text-align:right;padding:9px 6px;border-bottom:1px solid var(--line);font-size:15px}
 th:first-child,td:first-child{text-align:left}
@@ -66,6 +66,8 @@ th{font-weight:500;color:var(--muted);font-size:13px}
 .hist .col.me .bar{background:var(--blue)}
 .hist .col.me{color:var(--blue);font-weight:700}
 .medal{vertical-align:-4px}
+.gold{color:#B8860B}
+.award{display:inline-flex;align-items:center;gap:3px;background:#A63A27;color:#fff;border-radius:999px;padding:1px 9px 1px 6px;font-size:13px;font-weight:700;line-height:1.6;letter-spacing:.5px}
 .champ{display:inline-flex;align-items:center;gap:6px;background:#FFF4D1;border:1px solid #E2B33C;color:#7A5A08;border-radius:999px;padding:4px 14px 4px 8px;font-weight:700;font-size:15px;margin-bottom:6px}
 [hidden]{display:none!important}
 </style>
@@ -212,22 +214,33 @@ function medal(size) {
     '<text x="16" y="31" text-anchor="middle" font-size="13" font-weight="700" fill="#7A5A08" font-family="sans-serif">1</text></svg>';
 }
 function champBadge() { return '<span class="champ">' + medal(20) + '冠軍金獎</span>'; }
-function stat(k, v, rank) {
-  return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + (rank === 1 ? medal(16) + ' ' : '') + esc(v) + '</div></div>';
+var AWARD_TOP = 100;   // 校排前 N 名顯示「特優」標章
+
+function awardBadge() {
+  return '<span class="award" role="img" aria-label="校排前' + AWARD_TOP + '名特優">' +
+    '<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.8-6.3 3.8 1.7-7L2 9.2l7.1-.6z" fill="#FFE08A"/></svg>特優</span>';
 }
-function rankStat(k, rank) { return stat(k, rankText(rank), rank); }
+function statHtml(k, html, rank) {
+  return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + (rank === 1 ? medal(16) : '') + '<span>' + html + '</span></div></div>';
+}
+function stat(k, v) { return statHtml(k, esc(v), null); }
+function rankStat(k, rank, award) {
+  var txt = rank == null ? '—' : '第 ' + (rank === 1 ? '<span class="gold">1</span>' : rank) + ' 名';
+  var badge = (award && rank != null && rank <= AWARD_TOP) ? awardBadge() : '';
+  return statHtml(k, txt, rank).replace('</span></div></div>', '</span>' + badge + '</div></div>');
+}
 
 /* ---------- 定期評量 ---------- */
 
 function regularHtml(ex) {
   var list = ex.subjects;
   var h = '<div class="panel">' +
-    '<div class="rank"><span class="big">' + (ex.classRank == null ? '—' : ex.classRank) + '</span>' +
+    '<div class="rank"><span class="big' + (ex.classRank === 1 ? ' gold' : '') + '">' + (ex.classRank == null ? '—' : ex.classRank) + '</span>' +
     (ex.classRank === 1 ? champBadge() : '') +
     '<span class="cap">班排名(全班 ' + ex.classSize + ' 人)</span></div>' +
     '<div class="stats">' +
     stat('總分', fmt(ex.total, 1)) + stat('平均', fmt(ex.avg, 1)) +
-    (ex.schoolRank != null ? rankStat('校排', ex.schoolRank) : '') +
+    (ex.schoolRank != null ? rankStat('校排', ex.schoolRank, true) : '') +
     (ex.writing != null ? stat('寫作', fmt(ex.writing)) : '') +
     '</div></div>';
 
@@ -291,7 +304,7 @@ function mockHtml(ex) {
     (ex.classRank === 1 ? champBadge() : '') +
     '<span class="cap">總積分' + (ex.combo ? '(' + esc(ex.combo) + ')' : '') + '</span></div>' +
     '<div class="stats">' +
-    rankStat('班排', ex.classRank) + rankStat('校排', ex.schoolRank) + rankStat('區排', ex.areaRank) +
+    rankStat('班排', ex.classRank) + rankStat('校排', ex.schoolRank, true) + rankStat('區排', ex.areaRank) +
     (ex.areaMaleRank != null ? rankStat('區男排', ex.areaMaleRank) : '') +
     (ex.areaFemaleRank != null ? rankStat('區女排', ex.areaFemaleRank) : '') +
     (ex.essay != null ? stat('作文級分', fmt(ex.essay)) : '') +
