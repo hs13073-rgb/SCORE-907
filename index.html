@@ -69,6 +69,43 @@ th{font-weight:500;color:var(--muted);font-size:13px}
 .gold{color:#B8860B}
 .award{display:inline-flex;align-items:center;gap:3px;background:#A63A27;color:#fff;border-radius:999px;padding:1px 9px 1px 6px;font-size:13px;font-weight:700;line-height:1.6;letter-spacing:.5px}
 .champ{display:inline-flex;align-items:center;gap:6px;background:#FFF4D1;border:1px solid #E2B33C;color:#7A5A08;border-radius:999px;padding:4px 14px 4px 8px;font-weight:700;font-size:15px;margin-bottom:6px}
+.tag{display:inline-block;font-size:12px;line-height:1.6;padding:0 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);font-weight:500}
+.tag.good{color:var(--good);border-color:var(--good)}
+.tag.warn{color:var(--warn);border-color:var(--warn)}
+.diag{margin:0;padding-left:20px}
+.diag li{margin:6px 0}
+.trend{display:block;width:100%;max-width:420px;margin:6px auto 0}
+.strat{background:#F7FAFD}
+.strat h3{font-size:15px;margin:16px 0 4px;color:var(--blue)}
+.strat h3:first-of-type{margin-top:4px}
+.strat p{margin:4px 0}
+.strat ul,.strat ol{margin:4px 0;padding-left:20px}
+.strat li{margin:4px 0}
+.strat .meta{font-size:14px;color:var(--muted);margin:0 0 6px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
+.chip{font:inherit;font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;color:var(--ink);cursor:pointer;min-height:36px}
+.chip[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
+.blk{margin:0}
+.top .who{margin:4px 0 14px}
+@media (min-width:1100px){
+  body.results{font-size:14px;line-height:1.55}
+  body.results .wrap{max-width:1780px;padding:12px 20px 20px}
+  body.results .top{display:flex;flex-wrap:wrap;align-items:center;gap:0 20px;margin-bottom:8px}
+  body.results .top .who{margin:0;gap:16px}
+  body.results .top .tabs{margin:0;padding:0}
+  .dash{column-count:3;column-gap:16px}
+  .blk{break-inside:avoid;-webkit-column-break-inside:avoid;page-break-inside:avoid;margin:0 0 12px}
+  .blk.span{column-span:all}
+  .blk>h2:first-child{margin:0 0 6px;font-size:15px}
+  body.results .panel{padding:12px}
+  body.results .rank .big{font-size:44px}
+  body.results .stats{margin-top:10px}
+  body.results th,body.results td{padding:6px 6px;font-size:14px}
+  body.results .radar{max-width:300px}
+  body.results .strat h3{margin:10px 0 2px}
+  body.results .hist{height:84px}
+}
+@media (min-width:1700px){ .dash{column-count:4} }
 [hidden]{display:none!important}
 </style>
 </head>
@@ -90,13 +127,14 @@ th{font-weight:500;color:var(--muted);font-size:13px}
   </form>
 
   <div id="result" hidden></div>
+  <p class="hint" style="margin-top:28px">頁面版本:20261102-2</p>
 </div>
 
 <script>
 // 只有放在 GitHub Pages 時才會用到:貼上 Apps Script「網頁應用程式網址」(以 /exec 結尾)。在 Apps Script 內開啟時會忽略。
 var API_URL = 'https://script.google.com/macros/s/AKfycbwotaDvV7PaIKKZbVyAzFB9QncMkzbZHxKDg9isT-SZlrssmQFy9uj2mnmy8CKBMHN6/exec';
 
-var state = { data: null, exam: 0 };
+var state = { data: null, exam: 0, trendSel: { regular: '平均', mock: '總積分' } };
 var BUCKETS = ['60以下', '60–69', '70–79', '80–89', '90–99', '100'];
 
 function $(id) { return document.getElementById(id); }
@@ -165,8 +203,18 @@ function latestOk(exams, type) {
   return last >= 0 ? last : Math.max(first, 0);
 }
 
+$('result').addEventListener('click', function (e) {
+  var b = e.target && e.target.closest ? e.target.closest('.chip') : null;
+  if (!b || !state.data) return;
+  var kind = b.getAttribute('data-kind');
+  state.trendSel[kind] = b.getAttribute('data-k');
+  var cur = state.data.exams[state.exam], box = $('trend-' + kind);
+  if (box) box.innerHTML = kind === 'regular' ? regularTrendBody(cur) : mockTrendBody(cur);
+});
+
 function logout() {
   state.data = null;
+  if (document.body && document.body.classList) document.body.classList.remove('results');
   $('result').hidden = true; $('result').innerHTML = '';
   $('loginForm').hidden = false;
   document.querySelector('.sub').hidden = false;
@@ -185,11 +233,12 @@ function render() {
       '<button class="tab" role="tab" aria-selected="' + (i === state.exam) + '" data-i="' + i + '">' + esc(ex.label) + '</button>';
   }).join('');
   root.innerHTML =
-    '<div class="who"><span><b>' + esc(d.student.name) + '</b>(' + esc(d.student.seat) + ' 號)</span>' +
+    '<div class="top"><div class="who"><span><b>' + esc(d.student.name) + '</b>(' + esc(d.student.seat) + ' 號)</span>' +
     '<button class="linkbtn" id="logoutBtn">登出</button></div>' +
     '<div class="tabs" role="group" aria-label="考試類別">' + gtabs + '</div>' +
-    '<div class="tabs" role="tablist" aria-label="考試次數">' + etabs + '</div>' +
-    '<div id="examBody"></div>';
+    '<div class="tabs" role="tablist" aria-label="考試次數">' + etabs + '</div></div>' +
+    '<div id="examBody" class="dash"></div>';
+  if (document.body && document.body.classList) document.body.classList.add('results');
   root.hidden = false;
   $('logoutBtn').onclick = logout;
   Array.prototype.forEach.call(root.querySelectorAll('.tab[data-i]'), function (b) {
@@ -205,6 +254,8 @@ function render() {
 }
 
 /* ---------- 共用元件 ---------- */
+
+function blk(html, cls) { return '<div class="blk' + (cls ? ' ' + cls : '') + '">' + html + '</div>'; }
 
 function medal(size) {
   return '<svg class="medal" width="' + size + '" height="' + Math.round(size * 1.25) + '" viewBox="0 0 32 40" role="img" aria-label="冠軍金獎">' +
@@ -234,7 +285,7 @@ function rankStat(k, rank, award) {
 
 function regularHtml(ex) {
   var list = ex.subjects;
-  var h = '<div class="panel">' +
+  var h = blk('<div class="panel">' +
     '<div class="rank"><span class="big' + (ex.classRank === 1 ? ' gold' : '') + '">' + (ex.classRank == null ? '—' : ex.classRank) + '</span>' +
     (ex.classRank === 1 ? champBadge() : '') +
     '<span class="cap">班排名(全班 ' + ex.classSize + ' 人)</span></div>' +
@@ -242,24 +293,97 @@ function regularHtml(ex) {
     stat('總分', fmt(ex.total, 1)) + stat('平均', fmt(ex.avg, 1)) +
     (ex.schoolRank != null ? rankStat('校排', ex.schoolRank, true) : '') +
     (ex.writing != null ? stat('寫作', fmt(ex.writing)) : '') +
-    '</div></div>';
+    '</div></div>', 'span');
 
-  h += '<h2>各科表現</h2><div class="panel">' + radar(list, 100, 5) +
-    '<div class="legend"><span><i></i>本人</span><span><i class="dash"></i>班平均</span></div></div>';
+  h += blk('<h2>各科表現</h2><div class="panel">' + radar(list, 100, 5) +
+    '<div class="legend"><span><i></i>本人</span><span><i class="dash"></i>班平均</span></div></div>');
 
-  h += '<div class="panel" style="margin-top:12px"><table><thead><tr><th>科目</th><th>本人</th><th>班平均</th><th>差距</th></tr></thead><tbody>' +
+  h += blk('<h2>各科分數</h2><div class="panel"><table><thead><tr><th>科目</th><th>本人</th><th>班平均</th><th>差距</th></tr></thead><tbody>' +
     list.map(function (s) {
       var diff = (s.score != null && s.classAvg != null) ? s.score - s.classAvg : null;
       var cls = diff == null ? '' : (diff >= 0 ? 'up' : 'down');
       var dtxt = diff == null ? '—' : (diff >= 0 ? '+' : '−') + Math.abs(diff).toFixed(1);
       return '<tr><td>' + esc(s.name) + '</td><td>' + fmt(s.score, 1) + '</td><td>' + fmt(s.classAvg, 1) + '</td><td class="' + cls + '">' + dtxt + '</td></tr>';
-    }).join('') + '</tbody></table></div>';
+    }).join('') + '</tbody></table></div>');
 
-  h += '<h2>全班分數分布</h2><div class="panel">' +
+  h += blk('<h2>歷次定期評量趨勢</h2><div class="panel">' + regularTrend(ex) + '</div>');
+
+  h += blk('<h2>全班分數分布</h2><div class="panel">' +
     '<div class="dist"><span></span>' + BUCKETS.map(function (b) { return '<span class="hd">' + b + '</span>'; }).join('') + '</div>' +
     list.map(distRow).join('') +
-    '<p class="note">藍色為你所在的分數區間,數字為該區間的人數;「100」為滿分的人數。</p></div>';
+    '<p class="note">藍色為你所在的分數區間,數字為該區間的人數;「100」為滿分的人數。</p></div>');
   return h;
+}
+
+function chips(kind, items, sel) {
+  return '<div class="chips" role="group" aria-label="選擇要看的項目">' + items.map(function (n) {
+    return '<button class="chip" data-kind="' + kind + '" data-k="' + esc(n) + '" aria-pressed="' + (n === sel) + '">' + esc(n) + '</button>';
+  }).join('') + '</div>';
+}
+function findSub(e, name) {
+  for (var i = 0; i < e.subjects.length; i++) if (e.subjects[i].name === name) return e.subjects[i];
+  return null;
+}
+
+function regularTrend(cur) { return '<div id="trend-regular">' + regularTrendBody(cur) + '</div>'; }
+
+function regularTrendBody(cur) {
+  var all = state.data.exams.filter(function (e) { return e.type === 'regular' && e.status === 'ok'; });
+  if (all.length < 2) return '<p class="note">目前只有一次定期評量成績,之後會在這裡顯示歷次的變化。</p>';
+  var sel = state.trendSel.regular, isAvg = sel === '平均';
+  if (!isAvg && !findSub(cur, sel)) sel = state.trendSel.regular = '平均', isAvg = true;
+  var pts = all.map(function (e) {
+    var v, c;
+    if (isAvg) { v = e.avg; c = e.classAvg != null ? e.classAvg : mean(e.subjects.map(function (s) { return s.classAvg; })); }
+    else { var s = findSub(e, sel); v = s ? s.score : null; c = s ? s.classAvg : null; }
+    return { label: e.label, v: v, c: c, me: e === cur };
+  });
+  var vals = [];
+  pts.forEach(function (p) { if (p.v != null) vals.push(p.v); if (p.c != null) vals.push(p.c); });
+  if (!vals.length) return chips('regular', ['平均'].concat(cur.subjects.map(function (s) { return s.name; })), sel) + '<p class="note">這個項目沒有資料。</p>';
+  var lo = Math.max(0, Math.floor((Math.min.apply(null, vals) - 5) / 10) * 10);
+  return chips('regular', ['平均'].concat(cur.subjects.map(function (s) { return s.name; })), sel) +
+    trend(pts, { min: lo, max: 100, step: (100 - lo) > 60 ? 20 : 10, fmt: function (v) { return Number(v).toFixed(1).replace(/\.0$/, ''); } }) +
+    '<div class="legend"><span><i></i>本人' + (isAvg ? '平均' : esc(sel)) + '</span><span><i class="dash"></i>班平均</span></div>';
+}
+
+/* 模擬考:總積分或各科答對題數 */
+function mockTrendBody(cur) {
+  var all = state.data.exams.filter(function (e) { return e.type === 'mock' && e.status === 'ok'; });
+  if (all.length < 2) return '<p class="note">目前只有一次模擬考成績,之後會在這裡顯示歷次趨勢。</p>';
+  var names = cur.subjects.map(function (s) { return s.name; });
+  var sel = state.trendSel.mock, isTotal = sel === '總積分', isW = sel === '數學' || sel === '英語';
+  if (!isTotal && names.indexOf(sel) < 0) sel = state.trendSel.mock = '總積分', isTotal = true;
+  var items = ['總積分'].concat(names);
+  var pts = all.map(function (e) {
+    var v, c, lab = e.label.replace('模擬考', '');
+    if (isTotal) { v = e.total; c = e.classAvg; }
+    else {
+      var s = findSub(e, sel);
+      if (isW) { v = s ? (s.weighted != null ? s.weighted : (s.extra ? s.extra.weighted : null)) : null; c = s ? s.classAvgWeighted : null; }
+      else { v = s ? s.correct : null; c = s ? s.classAvgCorrect : null; }
+    }
+    return { label: lab, v: v, c: c, me: e === cur };
+  });
+  var o;
+  if (isTotal) o = { min: 0, max: 30, step: 10, fmt: function (v) { return v; } };
+  else {
+    var vals = [];
+    pts.forEach(function (p) { if (p.v != null) vals.push(p.v); if (p.c != null) vals.push(p.c); });
+    if (!vals.length) return chips('mock', items, sel) + '<p class="note">這個科目沒有' + (isW ? '加權分數' : '答對題數') + '資料。</p>';
+    var lo, hi;
+    if (isW) { lo = Math.max(0, Math.floor((Math.min.apply(null, vals) - 5) / 10) * 10); hi = 100; }
+    else { lo = Math.max(0, Math.floor((Math.min.apply(null, vals) - 3) / 5) * 5); hi = Math.ceil((Math.max.apply(null, vals) + 3) / 5) * 5; }
+    o = { min: lo, max: hi, step: isW ? ((hi - lo) > 60 ? 20 : 10) : ((hi - lo) <= 25 ? 5 : 10), fmt: function (v) { return Number(v).toFixed(1).replace(/\.0$/, ''); } };
+  }
+  return chips('mock', items, sel) + trend(pts, o) +
+    '<div class="legend"><span><i></i>本人</span><span><i class="dash"></i>班平均</span></div>' +
+    (isTotal ? '' : '<p class="note" style="text-align:center">' + (isW ? '縱軸為加權分數(滿分 100),等級是依加權分數判定的。' : '縱軸為答對題數。') + '</p>');
+}
+
+function mean(a) {
+  var n = a.filter(function (v) { return v != null; });
+  return n.length ? n.reduce(function (s, v) { return s + v; }, 0) / n.length : null;
 }
 
 function distRow(s) {
@@ -299,7 +423,7 @@ function radar(list, max, rings) {
 /* ---------- 模擬考 ---------- */
 
 function mockHtml(ex) {
-  var h = '<div class="panel">' +
+  var h = blk('<div class="panel">' +
     '<div class="rank"><span class="big">' + fmt(ex.total) + '</span>' +
     (ex.classRank === 1 ? champBadge() : '') +
     '<span class="cap">總積分' + (ex.combo ? '(' + esc(ex.combo) + ')' : '') + '</span></div>' +
@@ -308,14 +432,14 @@ function mockHtml(ex) {
     (ex.areaMaleRank != null ? rankStat('區男排', ex.areaMaleRank) : '') +
     (ex.areaFemaleRank != null ? rankStat('區女排', ex.areaFemaleRank) : '') +
     (ex.essay != null ? stat('作文級分', fmt(ex.essay)) : '') +
-    '</div></div>';
+    '</div></div>', 'span');
 
   var rl = ex.subjects.map(function (s) { return { name: s.name, score: s.points, classAvg: s.classAvg }; });
-  h += '<h2>各科積分</h2><div class="panel">' + radar(rl, 6, 6) +
+  h += blk('<h2>各科積分</h2><div class="panel">' + radar(rl, 6, 6) +
     '<div class="legend"><span><i></i>本人</span><span><i class="dash"></i>班平均</span></div>' +
-    '<p class="note" style="text-align:center">每一圈代表 1 分,最外圈為 6 分。</p></div>';
+    '<p class="note" style="text-align:center">每一圈代表 1 分,最外圈為 6 分。</p></div>');
 
-  h += '<div class="panel" style="margin-top:12px"><table><thead><tr><th>科目</th><th>答對題數</th><th>等級</th><th>積分</th><th>班平均</th></tr></thead><tbody>' +
+  var tbl = '<h2>各科結果</h2><div class="panel"><table><thead><tr><th>科目</th><th>答對題數</th><th>等級</th><th>積分</th><th>班平均</th></tr></thead><tbody>' +
     ex.subjects.map(function (s) {
       // 英語的答對題數顯示為「閱讀+聽力」,例如 43+21
       var correct = (s.name === '英語' && s.extra && (s.extra.reading != null || s.extra.listening != null))
@@ -324,14 +448,233 @@ function mockHtml(ex) {
     }).join('') + '</tbody></table>';
 
   var m = ex.subjects[1].extra, e = ex.subjects[2].extra;
-  h += '<p class="note">數學:選擇題答對 ' + fmt(m.choice) + ' 題;非選擇題第 1 題 ' + fmt(m.q1) + '、第 2 題 ' + fmt(m.q2) +
+  h += blk(tbl + '<p class="note">數學:選擇題答對 ' + fmt(m.choice) + ' 題;非選擇題第 1 題 ' + fmt(m.q1) + '、第 2 題 ' + fmt(m.q2) +
     '(級分 ' + fmt(m.nonChoiceGrade) + ');加權分數 ' + fmt(m.weighted) + '。</p>' +
     '<p class="note">英語:閱讀答對 ' + fmt(e.reading) + ' 題(' + esc(e.readingLevel || '—') + ');聽力答對 ' + fmt(e.listening) +
-    ' 題(' + esc(e.listeningLevel || '—') + ');加權分數 ' + fmt(e.weighted) + '。</p></div>';
+    ' 題(' + esc(e.listeningLevel || '—') + ');加權分數 ' + fmt(e.weighted) + '。</p></div>');
 
-  h += '<h2>全班總積分分布</h2><div class="panel">' + hist(ex) +
-    '<p class="note">全班 ' + ex.classSize + ' 人,平均 ' + fmt(ex.classAvg, 1) + ' 分;藍色為你所在的區間,「30滿分」為滿分的人數。</p></div>';
+  h += diagnosisHtml(ex);
+
+  h += blk('<h2>全班總積分分布</h2><div class="panel">' + hist(ex) +
+    '<p class="note">全班 ' + ex.classSize + ' 人,平均 ' + fmt(ex.classAvg, 1) + ' 分;藍色為你所在的區間,「30滿分」為滿分的人數。</p></div>');
   return h;
+}
+
+/* ---------- 模擬考診斷分析 ---------- */
+
+function signed(v, d) { var t = Math.abs(v).toFixed(d == null ? 0 : d); return Number(t) === 0 ? t : (v > 0 ? '+' : '−') + t; }
+
+function diagnosisHtml(ex) {
+  var all = state.data.exams.filter(function (e) { return e.type === 'mock' && e.status === 'ok'; });
+  var at = all.indexOf(ex), prev = at > 0 ? all[at - 1] : null;
+
+  // 各科:較班平均、較上次、判讀
+  var rows = ex.subjects.map(function (s, i) {
+    var vc = (s.points != null && s.classAvg != null) ? s.points - s.classAvg : null;
+    var ps = prev && prev.subjects[i] ? prev.subjects[i].points : null;
+    var vp = (s.points != null && ps != null) ? s.points - ps : null;
+    var tag = vc == null ? ['—', ''] : vc >= 0.5 ? ['強項', 'good'] : vc <= -0.5 ? ['待加強', 'warn'] : ['持平', ''];
+    return { name: s.name, points: s.points, vc: vc, vp: vp, tag: tag };
+  });
+  var strong = rows.filter(function (r) { return r.tag[0] === '強項'; });
+  var weak = rows.filter(function (r) { return r.tag[0] === '待加強'; });
+  var weakest = weak.slice().sort(function (a, b) { return a.vc - b.vc; })[0];
+
+  var h = blk('<h2>診斷分析</h2>' + strategyHtml(ex, rows, prev)) + '<div class="blk"><h2>各科判讀</h2><div class="panel">';
+
+  h += '<table><thead><tr><th>科目</th><th>積分</th><th>較班平均</th><th>' + '較上次' + '</th><th>判讀</th></tr></thead><tbody>' +
+    rows.map(function (r) {
+      return '<tr><td>' + esc(r.name) + '</td><td>' + fmt(r.points) + '</td>' +
+        '<td class="' + (r.vc == null || r.vc === 0 ? '' : r.vc > 0 ? 'up' : 'down') + '">' + (r.vc == null ? '—' : signed(r.vc, 1)) + '</td>' +
+        '<td class="' + (r.vp == null || r.vp === 0 ? '' : r.vp > 0 ? 'up' : 'down') + '">' + (r.vp == null ? '—' : signed(r.vp)) + '</td>' +
+        '<td><span class="tag ' + r.tag[1] + '">' + r.tag[0] + '</span></td></tr>';
+    }).join('') + '</tbody></table>';
+
+  // 重點說明
+  var li = [];
+  if (ex.total != null && ex.classAvg != null) {
+    var d = ex.total - ex.classAvg;
+    li.push('本次總積分 ' + fmt(ex.total) + ' 分,' + (d >= 0 ? '高於' : '低於') + '全班平均 ' + Math.abs(d).toFixed(1) +
+      ' 分(班平均 ' + fmt(ex.classAvg, 1) + ')' + (ex.classRank != null ? ',班排第 ' + ex.classRank + ' 名' : '') + '。');
+  }
+  if (prev && prev.total != null && ex.total != null) {
+    var dt = ex.total - prev.total, s2 = '與上一次(' + esc(prev.label) + ')相比,總積分' + (dt === 0 ? '持平' : (dt > 0 ? '進步 ' : '退步 ') + Math.abs(dt) + ' 分');
+    if (prev.classRank != null && ex.classRank != null && prev.classRank !== ex.classRank) {
+      var dr = prev.classRank - ex.classRank;
+      s2 += ',班排' + (dr > 0 ? '前進 ' : '後退 ') + Math.abs(dr) + ' 名';
+    }
+    li.push(s2 + '。');
+  }
+  if (ex.schoolRank != null) {
+    li.push(ex.schoolRank <= AWARD_TOP ? '校排在前 ' + AWARD_TOP + ' 名內。' : '距離校排前 ' + AWARD_TOP + ' 名還差 ' + (ex.schoolRank - AWARD_TOP) + ' 名。');
+  }
+  h += '<ul class="diag">' + li.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>';
+
+  // 趨勢
+  h += '<p class="note">「強項」「待加強」是依本次積分與班平均相差 0.5 分以上自動判讀,僅供參考,不代表完整的學習評估,建議與導師一起討論。</p></div></div>';
+  h += blk('<h2>歷次模擬考趨勢</h2><div class="panel"><div id="trend-mock">' + mockTrendBody(ex) + '</div></div>');
+  return h;
+}
+
+/* ---------- 弱點擊破策略(依成績規則自動產生,非 AI) ---------- */
+
+var LV_ORDER = ['C', 'B', 'B+', 'B++', 'A', 'A+', 'A++'];   // 由低到高
+var FULL_POINTS = 6;                                         // 各科滿分積分(五科共 30)
+function lvCode(s) { var m = /[(（]([ABC]\+*)[)）]/.exec(s || ''); return m ? m[1] : null; }
+function lvRank(c) { return LV_ORDER.indexOf(c); }
+
+var TIPS = {
+  '國文': '把複習重心放在閱讀理解與整合題:每週精讀 2 篇長文,整理錯題是「讀不懂題目」還是「抓錯重點」,並練習作文的結構與論證。',
+  '數學': '每天限時練習 2 題非選擇題,重點是完整寫出算式與理由;另外整理選擇題的粗心失分,把計算與審題的錯誤分開記錄。',
+  '社會': '針對錯題做跨單元整合,把歷史時序、地理位置與公民概念交叉對照,不要只靠重複刷題。',
+  '自然': '回頭整理錯題涉及的觀念與實驗,練習圖表判讀,並用自己的話說明推理過程。'
+};
+
+function gapText(g) {
+  var amount;
+  if (g.unit === '分') {
+    var lo = Number(g.lo).toFixed(1), hi = Number(g.hi).toFixed(1);
+    amount = g.lo === g.hi ? '還差 ' + hi + ' 分' : (g.lo <= 0.05 ? '最多還差 ' + hi + ' 分' : '約還差 ' + lo + '–' + hi + ' 分');
+  } else {
+    amount = g.lo === g.hi ? '還差 ' + g.lo + ' 題' : '約還差 ' + g.lo + '–' + g.hi + ' 題';
+  }
+  var t = '「' + esc(g.item) + '」目前 ' + esc(g.level) + ',距離 ' + esc(g.next) + ' ' + amount + (g.exact ? '(依老師公布的門檻)' : '(依全班成績估計)');
+  if (g.equiv) {
+    var c = g.equiv.choice, eq = '約相當於多對 ' + (c[0] === c[1] ? c[0] : c[0] + '–' + c[1]) + ' 題選擇題(每題 ' + g.equiv.choicePts + ' 分)';
+    if (g.equiv.grade) eq += ',或非選擇題多 ' + (g.equiv.grade[0] === g.equiv.grade[1] ? g.equiv.grade[0] : g.equiv.grade[0] + '–' + g.equiv.grade[1]) + ' 級分(每級分 ' + g.equiv.gradePts + ' 分)';
+    t += ';' + eq;
+  }
+  return t + '。';
+}
+
+function strategyHtml(ex, rows, prev) {
+  var subs = ex.subjects;
+  var codes = subs.map(function (s) { return lvCode(s.level); });
+  var known = codes.filter(Boolean);
+  var cnt = function (f) { return known.filter(f).length; };
+  var top = cnt(function (c) { return c === 'A++'; }), aUp = cnt(function (c) { return c.charAt(0) === 'A'; }),
+      bs = cnt(function (c) { return c.charAt(0) === 'B'; }), cs = cnt(function (c) { return c.charAt(0) === 'C'; });
+
+  // 1. 成績結構診斷
+  var type = null, desc = '';
+  if (known.length === subs.length) {
+    if (top === subs.length) { type = '全科頂尖型'; desc = '各科都達到 A++,實力非常整齊,重點是維持穩定、避免粗心失誤。'; }
+    else if (top >= 3) { type = '頂尖高手微調型'; desc = '已有 ' + top + ' 科達到 A++,基礎相當扎實;其餘科目只要再補強,就有機會進一步拉高總積分。'; }
+    else if (aUp === subs.length) { type = '穩健精熟型'; desc = '五科都在精熟(A)以上,實力穩定,可以朝 A+、A++ 再挑戰。'; }
+    else if (aUp >= 3) { type = '優勢科目明顯型'; desc = '有 ' + aUp + ' 科已達精熟,基礎級(B)的科目是接下來提升總積分的關鍵。'; }
+    else if (cs === 0) { type = '基礎累積型'; desc = '多數科目在基礎(B)等級,把基本題型答對、減少粗心,就能穩定往精熟(A)邁進。'; }
+    else { type = '基礎補強型'; desc = '有科目落在待加強(C),建議先把課本基本概念與常見題型練熟,再逐步提高難度。'; }
+  }
+  var h = '<div class="panel strat"><h3>成績結構診斷</h3>' +
+    '<p class="meta">總積分 ' + fmt(ex.total) + ' 分' + (ex.combo ? ' · 標示組合 ' + esc(ex.combo) : '') + '</p>' +
+    (type ? '<p><b>' + type + '</b>:' + desc + '</p>' : '<p>等級資料不完整,暫時無法判斷成績結構。</p>');
+
+  // 2. 關鍵瓶頸
+  var bl = [];
+  var scored = subs.map(function (s, i) { return { s: s, r: rows[i] }; }).filter(function (x) { return x.s.points != null; });
+  scored.sort(function (a, b) { return (a.s.points - b.s.points) || ((a.r.vc == null ? 0 : a.r.vc) - (b.r.vc == null ? 0 : b.r.vc)); });
+  var low = scored[0], focus = null;
+  if (low) {
+    if (low.s.points >= FULL_POINTS) {
+      var lv = subs.map(function (s, i) { return { s: s, c: codes[i] }; }).filter(function (x) { return x.c; })
+        .sort(function (a, b) { return lvRank(a.c) - lvRank(b.c); });
+      if (lv.length && lv[0].c !== 'A++') {
+        focus = lv[0].s.name;
+        bl.push('各科積分都已拿到最高 ' + FULL_POINTS + ' 分;等級最低的是「' + esc(lv[0].s.name) + '」(' + lv[0].c + (lv[0].s.correct != null ? ',答對 ' + lv[0].s.correct + ' 題' : '') + '),往 A++ 精進是進一步拉高表現的關鍵。');
+      } else {
+        bl.push('各科都達到最高積分與 A++ 等級,沒有明顯弱點,重點是維持穩定。');
+      }
+    } else {
+      focus = low.s.name;
+      var same = scored.filter(function (x) { return x !== low && x.s.points === low.s.points; });
+      bl.push('積分最低的是「' + esc(low.s.name) + '」(' + esc(low.s.level || '—') + ',積分 ' + low.s.points +
+        (low.s.correct != null ? ',答對 ' + low.s.correct + ' 題' : '') + '),距離該科最高積分 ' + FULL_POINTS + ' 分還差 ' + (FULL_POINTS - low.s.points) + ' 分。' +
+        (same.length >= 2 ? '多科積分相同,因此以落後班平均最多的「' + esc(low.s.name) + '」為優先。'
+          : same.length === 1 ? '「' + esc(same[0].s.name) + '」同為最低積分。' : ''));
+    }
+  }
+  var math = subs[1], eng = subs[2], weakPart = null;
+  if (math && math.extra && math.extra.q1 != null && math.extra.q2 != null && math.points != null && math.points < FULL_POINTS) {
+    bl.push('數學非選擇題第 1、2 題分別得 ' + math.extra.q1 + '、' + math.extra.q2 + ' 分' +
+      (math.extra.nonChoiceGrade != null ? '(級分 ' + math.extra.nonChoiceGrade + ')' : '') + ',可檢視作答過程是否完整。');
+  }
+  if (eng && eng.extra) {
+    var rc = lvCode(eng.extra.readingLevel), lc = lvCode(eng.extra.listeningLevel);
+    if (rc && lc && rc !== lc) {
+      weakPart = lvRank(rc) < lvRank(lc) ? '閱讀' : '聽力';
+      bl.push('英語閱讀(' + rc + ')與聽力(' + lc + ')有差距,' + weakPart + '相對較弱。');
+    }
+  }
+  h += '<h3>關鍵瓶頸</h3>' + (bl.length ? '<ul>' + bl.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>' : '<p>資料不足,無法判斷。</p>');
+
+  // 距離下一等級(有 gaps 資料才顯示)
+  var hasGaps = subs.some(function (s) { return s.gaps; });
+  if (hasGaps) {
+    var gaps = [];
+    subs.forEach(function (s) { (s.gaps || []).forEach(function (g) { gaps.push(g); }); });
+    var near = gaps.filter(function (g) { return !g.top && !g.unknown && g.lo != null; });
+    var unk = gaps.filter(function (g) { return g.unknown; });
+    // 「最接近升級」只拿能換算成題數的項目比較(題數項目,以及可換算成選擇題題數的數學)
+    var comparable = near.map(function (g) {
+      var n = g.unit === '分' ? (g.equiv ? g.equiv.choice[1] : null) : g.hi;
+      return n == null ? null : { g: g, n: n };
+    }).filter(Boolean).sort(function (a, b) { return a.n - b.n; });
+    var gl = near.map(gapText);
+    unk.forEach(function (g) { gl.push('「' + esc(g.item) + '」目前 ' + esc(g.level) + ':全班還沒有同學達到 ' + esc(g.next) + ',暫時無法估計門檻。'); });
+    if (!near.length && !unk.length) gl.push('可計算的項目都已經是最高等級。');
+    h += '<h3>距離下一等級</h3>' +
+      (comparable.length ? '<p>最接近升級的是「' + esc(comparable[0].g.item) + '」。</p>' : '') +
+      '<ul>' + gl.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>' +
+      (near.some(function (g) { return !g.exact; }) ? '<p class="note">估計值依本班同學的成績推算門檻所在的範圍,實際門檻以老師公布的為準。數學、英語總等級以加權分數計算,所以用「分」表示。</p>'
+        : near.some(function (g) { return g.unit === '分'; }) ? '<p class="note">數學、英語總等級以加權分數計算,所以用「分」表示。</p>' : '');
+  }
+
+  // 3. 下階段建議
+  var acts = [];
+  if (focus) {
+    var tip = focus === '英語'
+      ? (weakPart === '聽力' ? '每天做 10–15 分鐘聽力練習,先完整聽一遍再對照原文,整理聽不出來的字詞與句型。'
+        : weakPart === '閱讀' ? '增加長篇閱讀練習,先抓段落大意再看細節,並把不熟的字彙與句型整理成清單。'
+        : '閱讀與聽力都安排固定練習,每週至少各 2 次,並整理錯題中的字彙與句型。')
+      : TIPS[focus];
+    if (tip) acts.push('「' + esc(focus) + '」優先安排複習時間:' + tip);
+  }
+  var dec = rows.filter(function (r) { return r.vp != null && r.vp < 0; }).sort(function (a, b) { return a.vp - b.vp; })[0];
+  if (dec) acts.push('「' + esc(dec.name) + '」比上一次退步 ' + Math.abs(dec.vp) + ' 分,建議先檢視這次的錯題,看看是不是和上次同一類型。');
+  var strongNames = subs.filter(function (s, i) { return codes[i] === 'A++'; }).map(function (s) { return esc(s.name); });
+  if (strongNames.length && strongNames.length < subs.length) acts.push('「' + strongNames.join('、') + '」已達 A++,每週保持少量練習維持手感即可,把時間留給弱項。');
+  if (!hasGaps) acts.push('若想知道距離下一個等級還差幾題,請對照老師公布的各科等級門檻。');
+  h += '<h3>下階段建議</h3><ol>' + acts.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ol>' +
+    '<p class="note">這份策略由系統依成績與等級自動產生(非 AI),各科最高積分以 ' + FULL_POINTS + ' 分計,僅供參考,建議與導師一起討論。</p></div>';
+  return h;
+}
+
+/* 趨勢圖:pts 為 [{label, v, c, me}](v 本人、c 班平均、me 是否為目前這次),o 為 {min, max, step, fmt} */
+function trend(pts, o) {
+  var W = 340, H = 200, L = 34, Rr = 14, T = 18, B = 42;
+  var x = function (i) { return pts.length === 1 ? (L + W - Rr) / 2 : L + (W - L - Rr) * i / (pts.length - 1); };
+  var y = function (v) { return T + (H - T - B) * (1 - (Math.max(o.min, Math.min(o.max, v)) - o.min) / (o.max - o.min)); };
+  var g = '';
+  for (var t = o.min; t <= o.max; t += o.step) {
+    g += '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + y(t) + '" y2="' + y(t) + '" stroke="#D6DEE8"/>' +
+      '<text x="' + (L - 6) + '" y="' + (y(t) + 4) + '" font-size="11" text-anchor="end" fill="#5B6780">' + t + '</text>';
+  }
+  var line = function (key, stroke, dash) {
+    var p = pts.map(function (e, i) { return e[key] != null ? x(i) + ',' + y(e[key]) : null; }).filter(Boolean).join(' ');
+    return p ? '<polyline points="' + p + '" fill="none" stroke="' + stroke + '" stroke-width="2"' + (dash ? ' stroke-dasharray="5 4"' : '') + '/>' : '';
+  };
+  g += line('c', '#5B6780', true) + line('v', '#2B5C94', false);
+  pts.forEach(function (e, i) {
+    var parts = e.label.split(' '), fill = e.me ? '#2B5C94' : '#5B6780', fw = e.me ? ' font-weight="700"' : '';
+    parts.forEach(function (p, k) {
+      g += '<text x="' + x(i) + '" y="' + (H - B + 16 + k * 13) + '" font-size="11" text-anchor="middle" fill="' + fill + '"' + fw + '>' + esc(p) + '</text>';
+    });
+    if (e.v != null) {
+      g += '<circle cx="' + x(i) + '" cy="' + y(e.v) + '" r="' + (e.me ? 5 : 3.5) + '" fill="' + (e.me ? '#2B5C94' : '#fff') + '" stroke="#2B5C94" stroke-width="2"/>' +
+        '<text x="' + x(i) + '" y="' + (y(e.v) - 9) + '" font-size="11" text-anchor="middle" fill="#16233B">' + o.fmt(e.v) + '</text>';
+    }
+  });
+  return '<svg class="trend" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="歷次成績趨勢圖">' + g + '</svg>';
 }
 
 var HLOW = [0, 6, 10, 14, 18, 22, 26, 30];
